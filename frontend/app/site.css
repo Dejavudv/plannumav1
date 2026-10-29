@@ -1,0 +1,101 @@
+body{font-family:var(--font-vazir),"Vazirmatn",Tahoma,"Segoe UI",sans-serif}
+a{color:inherit}
+.btn,.ib,.uplink{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.gold{background:#B8F25B;color:#25133F}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.boot{min-height:100vh;display:grid;place-content:center;justify-items:center;gap:12px;color:var(--mut)}
+
+/* ---- داشبورد: منو، پلن، پشتیبانی ---- */
+.nav{align-items:center}
+.plan{font-size:13px;font-weight:700;padding:6px 12px;border-radius:20px;background:var(--acs);color:var(--ac);text-decoration:none;white-space:nowrap}
+.plan.pro{background:#B8F25B;color:#25133F}
+.dot{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#E0455B;color:#fff;font-size:11px;font-weight:700;margin-inline-start:6px}
+.menu{position:relative}
+.mpanel{position:absolute;inset-inline-end:0;top:calc(100% + 8px);z-index:20;min-width:250px;background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:8px;display:grid;gap:2px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
+.mpanel>button,.mpanel>a{display:flex;align-items:center;gap:6px;border:0;background:none;text-align:start;padding:9px 10px;border-radius:9px;font:inherit;color:var(--ink);text-decoration:none;cursor:pointer}
+.mpanel>button:hover,.mpanel>a:hover{background:var(--sf2)}
+.muser{padding:8px 10px;font-weight:700;border-bottom:1px solid var(--ln);margin-bottom:4px;display:grid}
+.muser small{font-weight:400;color:var(--mut)}
+.mtheme{display:flex;gap:4px;padding:6px 6px 4px;border-top:1px solid var(--ln);margin-top:4px}
+.mtheme button{flex:1;border:1px solid var(--ln);background:var(--sf2);color:var(--ink);border-radius:8px;height:30px;font:inherit;font-size:13px;cursor:pointer}
+.mtheme button[aria-pressed="true"]{background:var(--ac);border-color:var(--ac);color:var(--on)}
+.mpanel .mout{color:#E0455B}
+.up{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--acs);border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:10px}
+.uplink{background:#B8F25B;color:#25133F;font-weight:700;border-radius:10px;padding:6px 12px;font-size:13px}
+.chatfab{position:fixed;inset-inline-start:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:15;border:0;border-radius:28px;background:var(--ac);color:var(--on);padding:12px 18px;font:inherit;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.3);cursor:pointer}
+.chat{position:fixed;inset-inline-start:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;width:min(380px,calc(100vw - 32px));height:min(520px,calc(100vh - 32px));background:var(--sf);border:1px solid var(--ln);border-radius:18px;display:grid;grid-template-rows:auto 1fr auto;gap:10px;padding:12px;box-shadow:0 16px 40px rgba(0,0,0,.35)}
+.chat header{display:flex;justify-content:space-between;align-items:center}
+.msgs{overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px}
+.msg{max-width:82%;padding:8px 12px;border-radius:14px;background:var(--sf2)}
+.msg p{margin:0;white-space:pre-wrap;word-break:break-word}
+.msg small{color:var(--mut);font-size:11px}
+.msg.me{align-self:flex-start;background:var(--acs)}
+.msg.staff{align-self:flex-end;background:var(--ac);color:var(--on)}
+.msg.staff small{color:inherit;opacity:.8}
+.fld{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fld label{display:grid;gap:4px;font-size:13px;color:var(--mut)}
+
+/* ---- احراز هویت ---- */
+.auth{min-height:100vh;display:grid;place-content:center;justify-items:center;gap:16px;padding:20px}
+.auth form{width:min(400px,calc(100vw - 40px));display:grid;gap:10px;padding:22px}
+.auth h1{margin:0;font-size:22px}
+.auth label{display:grid;gap:5px;font-size:14px}
+.pw{display:flex;gap:6px}
+.hint{color:var(--mut);font-size:12px;margin-top:-6px}
+.err{background:#E0455B22;color:#E0455B;border:1px solid #E0455B66;border-radius:10px;padding:8px 12px;font-size:14px}
+.alt{text-align:center;margin:4px 0 0;color:var(--mut);font-size:14px}
+.alt a{color:var(--ac);font-weight:700}
+
+/* ---- پرداخت ---- */
+.pgrid{display:grid;gap:16px;grid-template-columns:1fr;align-items:start}
+@media (min-width:900px){.pgrid{grid-template-columns:1fr 1fr}}
+.pay h3{margin:0 0 10px;font-size:16px}
+.okc{border-color:#1A7F44;margin-bottom:16px}
+.plans{display:grid;gap:8px;grid-template-columns:1fr 1fr;margin-bottom:12px}
+.plan-opt{display:grid;gap:2px;text-align:start;border:2px solid var(--ln);background:var(--sf2);color:var(--ink);border-radius:14px;padding:12px;font:inherit;cursor:pointer}
+.plan-opt.on{border-color:var(--ac);background:var(--acs)}
+.plan-opt small{color:var(--mut)}
+.perks{padding-inline-start:18px;margin:0 0 18px;display:grid;gap:4px;color:var(--mut);font-size:14px}
+.cardbox{background:linear-gradient(135deg,#25133F,#4A2A7A);color:#fff;border-radius:16px;padding:16px;display:grid;gap:10px;margin-bottom:10px}
+.cardbox .cn{font-size:24px;letter-spacing:2px;font-weight:700;text-align:center;direction:ltr}
+.cardbox .ch2{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px}
+.cardbox .btn{background:#B8F25B;color:#25133F;height:36px}
+.drop{display:grid;place-items:center;min-height:150px;border:2px dashed var(--ln);border-radius:14px;cursor:pointer;text-align:center;color:var(--mut);padding:10px;margin-bottom:10px;overflow:hidden}
+.drop input{position:absolute;opacity:0;pointer-events:none}
+.drop span{display:grid;gap:4px}
+.drop img{max-width:100%;max-height:260px;border-radius:10px}
+.drop:focus-within{outline:3px solid var(--ac)}
+.fl{display:grid;gap:5px;margin-bottom:10px;font-size:14px}
+.infoc{background:var(--acs);border-radius:12px;padding:12px}
+.plist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.plist li{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid var(--ln);background:var(--sf2);border-radius:12px;padding:10px 12px}
+.plist small{display:block;color:var(--mut)}
+.st-pending{color:#C98A00}.st-approved{color:#1A7F44}.st-rejected{color:#E0455B}
+[data-theme="dark"] .st-pending{color:#F5B93A}[data-theme="dark"] .st-approved{color:#B8F25B}
+
+/* ---- صفحهٔ معرفی ---- */
+.lp-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:1100px;margin:0 auto;padding:16px 20px}
+.lp-nav nav{display:flex;gap:8px;align-items:center}
+.lp-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-size:20px}
+.lp-hero{max-width:1100px;margin:10px auto 0;padding:48px 28px;border-radius:28px;background:linear-gradient(135deg,#25133F,#4A2A7A);color:#fff;display:grid;gap:24px;align-items:center;grid-template-columns:1fr}
+@media (min-width:860px){.lp-hero{grid-template-columns:1.4fr 1fr;padding:64px 48px}}
+.lp-hero h1{font-size:clamp(28px,5vw,46px);line-height:1.5;margin:10px 0}
+.lp-hero em{font-style:normal;color:#B8F25B}
+.lp-hero p{max-width:560px;color:#E9E0FA;font-size:17px}
+.lp-pill{display:inline-block;background:#ffffff22;border-radius:20px;padding:4px 14px;font-size:13px}
+.lp-cta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px}
+.lp-cta .btn{height:48px;padding:0 24px;font-size:16px}
+.lp-ghost{color:#E9E0FA}
+.lp-art{display:grid;place-items:center}
+.lp-sec{max-width:1100px;margin:0 auto;padding:44px 20px 0}
+.lp-sec h2{font-size:26px;margin:0 0 18px}
+.lp-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.lp-grid span{font-size:28px}.lp-grid h3{margin:6px 0}.lp-grid p{margin:0;color:var(--mut)}
+.lp-price{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.lp-price .card{display:grid;gap:10px;align-content:start}
+.lp-price h3{margin:0;font-size:20px}.lp-price .pr{font-size:22px;font-weight:800;margin:0}
+.lp-price ul{margin:0;padding-inline-start:18px;display:grid;gap:4px;color:var(--mut)}
+.lp-price .pro{border:2px solid #B8F25B}
+.lp-faq{display:grid;gap:10px}.lp-faq summary{cursor:pointer;font-weight:700}.lp-faq p{margin:8px 0 0;color:var(--mut)}
+.lp-foot{display:flex;gap:10px;align-items:center;justify-content:center;color:var(--mut);padding:48px 20px;font-size:14px}
