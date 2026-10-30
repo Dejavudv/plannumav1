@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
     "core",
 ]
 
@@ -102,15 +103,56 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # محدودیت نسخهٔ رایگان
-FREE_LIMITS = {"todos_per_day": 3, "habits": 3}
+FREE_LIMITS = {"todos_per_day": 3, "habits": 3, "recurring": 1}
 
 # پرداخت کارت‌به‌کارت (از متغیرهای محیطی قابل تغییر است)
 BILLING = {
     "card_number": env("BILLING_CARD_NUMBER", "6037-0000-0000-0000"),
     "card_holder": env("BILLING_CARD_HOLDER", "نام صاحب کارت"),
     "bank": env("BILLING_BANK", "نام بانک"),
+    "request_hours": 24,   # اعتبار درخواست پرداخت (مبلغ یکتا)
+    "suffix_max": 199,     # حداکثر عدد یکتای اضافه‌شده به مبلغ (تومان)
     "plans": {
         "monthly": {"title": "اشتراک پرو یک‌ماهه", "price": int(env("PRICE_MONTHLY", "99000")), "days": 30},
         "yearly": {"title": "اشتراک پرو یک‌ساله", "price": int(env("PRICE_YEARLY", "790000")), "days": 365},
     },
 }
+
+
+# ---------- اعلان به ادمین (تلگرام / بله / وب‌هوک) ----------
+NOTIFY = {
+    "telegram_token": env("TELEGRAM_BOT_TOKEN", ""),
+    "telegram_chat": env("TELEGRAM_CHAT_ID", ""),
+    # برای بله: https://tapi.bale.ai  (قبل از استفاده مستندات بله را بررسی کنید)
+    "telegram_api": env("TELEGRAM_API_BASE", "https://api.telegram.org"),
+    "webhook": env("NOTIFY_WEBHOOK_URL", ""),
+    "admin_url": env("SITE_ADMIN_URL", "http://127.0.0.1:8000/admin/"),
+    "on_signup": env("NOTIFY_ON_SIGNUP", "0") == "1",
+}
+
+# ---------- اعلان‌های وب (Web Push) ----------
+VAPID = {
+    "private": env("VAPID_PRIVATE_KEY", ""),
+    "public": env("VAPID_PUBLIC_KEY", ""),
+    "subject": env("VAPID_SUBJECT", "mailto:admin@example.com"),
+}
+
+BACKUP_DIR = Path(env("BACKUP_DIR", str(BASE_DIR / "backups")))
+
+# ---------- کش (برای محدودیت تلاش؛ با چند worker از Redis استفاده کنید) ----------
+if env("REDIS_URL"):
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": env("REDIS_URL")}}
+
+# ---------- لاگ و پایش خطا ----------
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
+}
+if env("SENTRY_DSN"):
+    try:
+        import sentry_sdk
+        sentry_sdk.init(dsn=env("SENTRY_DSN"), send_default_pii=False, traces_sample_rate=0.0)
+    except ImportError:
+        pass

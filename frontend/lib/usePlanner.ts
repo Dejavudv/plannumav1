@@ -61,6 +61,17 @@ export function usePlanner() {
     patch(k, (d) => ({ ...d, todos: d.todos.filter((t) => !t.done) }));
   };
 
+  const editTodo = async (k: string, id: number, title: string) => {
+    await api(`/todos/${id}`, { method: "PATCH", body: { title } });
+    patch(k, (d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? { ...t, title } : t)) }));
+  };
+  const moveTodo = async (k: string, id: number, to: string) => {
+    const t = (days[k]?.todos || []).find((x) => x.id === id);
+    await api(`/todos/${id}`, { method: "PATCH", body: { date: to } });
+    patch(k, (d) => ({ ...d, todos: d.todos.filter((x) => x.id !== id) }));
+    if (t) patch(to, (d) => ({ ...d, todos: [...d.todos, t] }));
+  };
+
   // ---- عادت‌ها
   const addHabit = async (name: string, weekdays: number[]) => {
     const h: Habit = await api("/habits", { body: { name, weekdays, start: sel, color: habits.length % 5 } });
@@ -104,6 +115,11 @@ export function usePlanner() {
     patch(k, (d) => ({ ...d, blocks: d.blocks.filter((b) => b.id !== id) }));
   };
 
+  const editBlock = async (k: string, id: number, b: { title: string; start: number; end: number; color: number }) => {
+    const r: Block = await api(`/blocks/${id}`, { method: "PATCH", body: b });
+    patch(k, (d) => ({ ...d, blocks: d.blocks.map((x) => (x.id === id ? r : x)) }));
+  };
+
   // ---- یادداشت، خواب، آب
   const saveDay = async (k: string, part: Partial<Pick<Day, "note" | "bed" | "wake" | "q" | "water">>) => {
     patch(k, (d) => ({ ...d, ...part }));
@@ -132,7 +148,18 @@ export function usePlanner() {
     return { habits: hs, days: out };
   };
 
-  return { sel, setSel, ws, habits, days, day, loading, reload, addTodo, toggleTodo, delTodo, clearDone, addHabit, patchHabit, delHabit,
-    moveHabit, toggleCheck, addBlock, delBlock, saveDay, copyWeek, fetchRange };
+  /** دادهٔ قدیمی‌تر را (مثلاً برای نمای سالانه) در صورت نیاز می‌گیرد */
+  const ensure = async (from: string) => {
+    const c = cover.current;
+    if (c && c[0] <= from) return;
+    const to = c ? shift(c[0], -1) : shift(ws, 6);
+    const r = await fetchRange(from, to);
+    setHabits(r.habits);
+    setDays((p) => ({ ...p, ...r.days }));
+    cover.current = [from, c ? c[1] : to];
+  };
+
+  return { sel, setSel, ws, habits, days, day, loading, reload, addTodo, toggleTodo, delTodo, clearDone, editTodo, moveTodo, addHabit, patchHabit, delHabit,
+    moveHabit, toggleCheck, addBlock, delBlock, editBlock, saveDay, copyWeek, fetchRange, ensure };
 }
 export type Planner = ReturnType<typeof usePlanner>;

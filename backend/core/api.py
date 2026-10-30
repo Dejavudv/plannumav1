@@ -47,6 +47,7 @@ def user_from_request(request):
     now = timezone.now()
     if (now - tok.last_used).total_seconds() > 3600:
         AuthToken.objects.filter(pk=tok.pk).update(last_used=now)
+        Profile.objects.filter(user_id=tok.user_id).update(last_seen=now)
     return tok.user
 
 

@@ -1,0 +1,31 @@
+{% extends "admin/index.html" %}
+{% load humanize %}
+{% block content %}
+<style>
+.pl-stats{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:0 0 18px}
+.pl-stat{background:var(--darkened-bg,#f6f6f6);border:1px solid var(--hairline-color,#ddd);border-radius:10px;padding:12px}
+.pl-stat b{display:block;font-size:22px}.pl-stat span{font-size:12px;opacity:.75}
+.pl-stat.alert{border-color:#c0392b}.pl-stat.alert b{color:#c0392b}
+.pl-note{font-size:12px;opacity:.7;margin:-8px 0 16px}
+</style>
+<h2>نمای کلی</h2>
+<div class="pl-stats">
+  <a class="pl-stat {% if stats.pending %}alert{% endif %}" href="{% url 'admin:core_payment_changelist' %}?status__exact=pending"><b>{{ stats.pending }}</b><span>رسید در انتظار بررسی</span></a>
+  <a class="pl-stat {% if stats.unread_chats %}alert{% endif %}" href="{% url 'admin:core_supportthread_changelist' %}"><b>{{ stats.unread_chats }}</b><span>گفتگوی خوانده‌نشده</span></a>
+  <a class="pl-stat {% if stats.consult_new %}alert{% endif %}" href="{% url 'admin:core_consultrequest_changelist' %}?status__exact=new"><b>{{ stats.consult_new }}</b><span>درخواست مشاورهٔ جدید</span></a>
+  <div class="pl-stat"><b>{{ stats.users_total|intcomma }}</b><span>کل کاربران</span></div>
+  <div class="pl-stat"><b>{{ stats.new_today }}</b><span>ثبت‌نام امروز</span></div>
+  <div class="pl-stat"><b>{{ stats.new_7 }}</b><span>ثبت‌نام ۷ روز اخیر</span></div>
+  <div class="pl-stat"><b>{{ stats.active_7 }}</b><span>فعال در ۷ روز اخیر</span></div>
+  <div class="pl-stat"><b>{{ stats.active_30 }}</b><span>فعال در ۳۰ روز اخیر</span></div>
+  <div class="pl-stat"><b>{{ stats.pro }}</b><span>کاربر پرو فعال</span></div>
+  <div class="pl-stat {% if stats.expiring %}alert{% endif %}"><b>{{ stats.expiring }}</b><span>پرو در ۷ روز آینده تمام می‌شود</span></div>
+  <div class="pl-stat"><b>{{ stats.revenue_30|intcomma }}</b><span>درآمد ۳۰ روز اخیر (تومان)</span></div>
+  <div class="pl-stat"><b>{{ stats.revenue_all|intcomma }}</b><span>درآمد کل (تومان)</span></div>
+  {% for r in stats.retention %}
+  <div class="pl-stat"><b>{% if r.pct is None %}—{% else %}{{ r.pct }}٪{% endif %}</b><span>بازگشت بعد از {{ r.days }} روز ({{ r.back }} از {{ r.total }})</span></div>
+  {% endfor %}
+</div>
+<p class="pl-note">بازگشت = کاربری که حداقل N روز بعد از ثبت‌نام دوباره فعال بوده. این معیار از زمان به‌روزرسانی اخیر ثبت می‌شود و برای کاربران قدیمی‌تر کمتر از واقع است.</p>
+{{ block.super }}
+{% endblock %}

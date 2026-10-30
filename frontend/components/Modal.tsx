@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-/** پنجرهٔ گفتگو با تگ بومی <dialog> (کلید Esc و کلیک بیرون برای بستن). */
-export function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+type Props = { open: boolean; onClose: () => void; title: string; children: React.ReactNode; wide?: boolean; locked?: boolean };
+
+/** پنجرهٔ گفتگو با تگ بومی <dialog>. locked = بسته‌نشدنی (مثلاً الزام تغییر رمز) */
+export function Modal({ open, onClose, title, children, wide, locked }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -11,8 +13,11 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
     if (!open && d.open) d.close();
   }, [open]);
   return (
-    <dialog ref={ref} aria-label={title} onClose={onClose} onClick={(e) => { if (e.target === ref.current) onClose(); }}>
-      {open && (<><h3 style={{ margin: "0 0 6px", fontSize: 17 }}>{title}</h3>{children}</>)}
+    <dialog ref={ref} className={wide ? "wide" : ""} aria-label={title}
+      onCancel={(e) => { if (locked) e.preventDefault(); }}
+      onClose={() => { if (!locked) onClose(); }}
+      onClick={(e) => { if (!locked && e.target === ref.current) onClose(); }}>
+      {open && (<><h3 style={{ margin: "0 0 8px", fontSize: 17 }}>{title}</h3>{children}</>)}
     </dialog>
   );
 }

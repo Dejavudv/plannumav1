@@ -10,11 +10,14 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Min
 from django.http import FileResponse, Http404, JsonResponse
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
 from .api import (api, clear_auth_cookie, client_ip, fail, issue_token, parse_date, profile_of,
                   set_auth_cookie, throttled)
-from .models import (Block, DayEntry, Habit, HabitCheck, Payment, SupportMessage, Todo, week_start, AuthToken)
+from .models import (AuthToken, Block, DayEntry, Habit, HabitCheck, Payment, Profile, RecurringRun, RecurringTask,
+                     SupportMessage, Todo, week_start)
+from .notify import notify
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.]{3,30}$")
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -39,12 +42,18 @@ def me_payload(user):
         "unread_support": SupportMessage.objects.filter(user=user, from_staff=True, read=False).count(),
         "pending_payment": Payment.objects.filter(user=user, status="pending").exists(),
         "first_date": first_date(user),
+        "must_change_password": p.must_change_password,
+        "days_left": max(0, (p.pro_until - timezone.now()).days) if p.is_pro and p.pro_until else None,
+        "accent": p.accent,
+        "vapid_public_key": settings.VAPID["public"],
+        "push_enabled": user.push_subs.exists(),
     }
 
 
 def ser_habit(h):
     return {"id": h.id, "name": h.name, "color": h.color, "weekdays": [int(c) for c in h.weekdays],
-            "start": h.start_date.isoformat(), "end": h.end_date.isoformat() if h.end_date else None}
+            "start": h.start_date.isoformat(), "end": h.end_date.isoformat() if h.end_date else None,
+            "reminder": h.reminder}
 
 
 def ser_todo(t):
@@ -57,7 +66,8 @@ def ser_block(b):
 
 def limit_error(kind):
     msgs = {"todos": f"در نسخهٔ رایگان حداکثر {settings.FREE_LIMITS['todos_per_day']} کار در هر روز می‌توانید ثبت کنید.",
-            "habits": f"در نسخهٔ رایگان حداکثر {settings.FREE_LIMITS['habits']} عادت می‌توانید داشته باشید."}
+            "habits": f"در نسخهٔ رایگان حداکثر {settings.FREE_LIMITS['habits']} عادت می‌توانید داشته باشید.",
+            "recurring": f"در نسخهٔ رایگان حداکثر {settings.FREE_LIMITS['recurring']} کار تکراری می‌توانید داشته باشید."}
     return fail("limit_" + kind, msgs[kind] + " برای حذف محدودیت، پرو را فعال کنید.", 402)
 
 
@@ -85,6 +95,9 @@ def register(request):
     except ValidationError as e:
         return fail("weak_password", " ".join(e.messages))
     user = User.objects.create_user(username=username, password=password)
+    Profile.objects.filter(user=user).update(last_seen=timezone.now())
+    if settings.NOTIFY["on_signup"]:
+        notify(f"👤 کاربر جدید: {username}")
     resp = JsonResponse(me_payload(user), status=201)
     set_auth_cookie(resp, issue_token(user))
     return resp
@@ -99,6 +112,7 @@ def login(request):
     user = authenticate(request, username=username, password=password)
     if not user:
         return fail("bad_credentials", "نام کاربری یا رمز عبور اشتباه است.", 401)
+    Profile.objects.filter(user=user).update(last_seen=timezone.now())
     resp = JsonResponse(me_payload(user))
     set_auth_cookie(resp, issue_token(user))
     return resp
@@ -130,6 +144,13 @@ def update_settings(request):
             p.glass_ml = int(d["glass_ml"])
         if "sleep_goal" in d:
             p.sleep_goal = min(14.0, max(4.0, float(d["sleep_goal"])))
+        if "accent" in d:
+            a = int(d["accent"])
+            if a not in range(5):
+                return fail("bad_value")
+            if a != 0 and not p.is_pro:
+                return fail("pro_only", "تم‌های رنگی مخصوص نسخهٔ پرو است.", 402)
+            p.accent = a
     except (TypeError, ValueError):
         return fail("bad_value")
     p.save()
@@ -137,12 +158,34 @@ def update_settings(request):
 
 
 # ---------- داده‌ها ----------
+def materialize(user, a, b):
+    """کارهای تکراری را برای بازهٔ [a, b] به لیست کارها اضافه می‌کند (حداکثر تا ۱۴ روز آینده)."""
+    tasks = list(RecurringTask.objects.filter(user=user, start_date__lte=b).exclude(end_date__lt=a))
+    if not tasks:
+        return
+    pro, limit = profile_of(user).is_pro, settings.FREE_LIMITS["todos_per_day"]
+    last = min(b, timezone.localdate() + timedelta(days=14))
+    for rt in tasks:
+        done = set(RecurringRun.objects.filter(task=rt, date__range=(a, last)).values_list("date", flat=True))
+        d = max(a, rt.start_date)
+        while d <= last:
+            if rt.end_date and d > rt.end_date:
+                break
+            if d not in done and str((d.weekday() + 2) % 7) in rt.weekdays:
+                n = Todo.objects.filter(user=user, date=d).count()
+                if pro or n < limit:
+                    Todo.objects.create(user=user, date=d, title=rt.title, position=n, recurring=rt)
+                    RecurringRun.objects.get_or_create(task=rt, date=d)
+            d += timedelta(days=1)
+
+
 @api(("GET",))
 def days(request):
     a, b = parse_date(request.GET.get("from")), parse_date(request.GET.get("to"))
     if not a or not b or b < a or (b - a).days > 400:
         return fail("bad_range")
     u, out = request.api_user, {}
+    materialize(u, a, b)
 
     def day(k):
         return out.setdefault(k.isoformat(), {"note": "", "bed": "", "wake": "", "q": 0, "water": 0,
@@ -181,6 +224,14 @@ def todo_item(request, pk):
         t.done = bool(request.data["done"])
     if "title" in request.data and str(request.data["title"]).strip():
         t.title = str(request.data["title"]).strip()[:200]
+    if "date" in request.data:
+        nd = parse_date(request.data["date"])
+        if not nd:
+            return fail("bad_value")
+        if nd != t.date:
+            if not profile_of(request.api_user).is_pro and Todo.objects.filter(user=request.api_user, date=nd).count() >= settings.FREE_LIMITS["todos_per_day"]:
+                return limit_error("todos")
+            t.date = nd
     t.save()
     return JsonResponse(ser_todo(t))
 
@@ -205,7 +256,8 @@ def habit_create(request):
         return limit_error("habits")
     h = Habit.objects.create(user=u, name=name, weekdays=wd, start_date=week_start(start),
                              color=int(d.get("color", Habit.objects.filter(user=u).count())) % 5,
-                             position=Habit.objects.filter(user=u).count())
+                             position=Habit.objects.filter(user=u).count(),
+                             reminder=d.get("reminder") if TIME_RE.match(str(d.get("reminder", ""))) else "")
     return JsonResponse(ser_habit(h), status=201)
 
 
@@ -232,6 +284,11 @@ def habit_item(request, pk):
         h.end_date = end
     if "position" in d:
         h.position = max(0, int(d["position"]))
+    if "reminder" in d:
+        r = str(d["reminder"] or "")
+        if r and not TIME_RE.match(r):
+            return fail("bad_value", "ساعت یادآوری نامعتبر است.")
+        h.reminder = r
     h.save()
     return JsonResponse(ser_habit(h))
 
@@ -265,10 +322,25 @@ def block_create(request):
     return JsonResponse(ser_block(b), status=201)
 
 
-@api(("DELETE",))
+@api(("PATCH", "DELETE"))
 def block_item(request, pk):
-    get_object_or_404(Block, pk=pk, user=request.api_user).delete()
-    return JsonResponse({"ok": True})
+    b = get_object_or_404(Block, pk=pk, user=request.api_user)
+    if request.method == "DELETE":
+        b.delete()
+        return JsonResponse({"ok": True})
+    d = request.data
+    try:
+        s, e = int(d.get("start", b.start_min)), int(d.get("end", b.end_min))
+    except (TypeError, ValueError):
+        return fail("bad_value")
+    title = str(d.get("title", b.title)).strip()[:120]
+    if not title or not (0 <= s < e <= 1440):
+        return fail("bad_value", "عنوان و بازهٔ زمانی را درست وارد کنید (پایان بعد از شروع).")
+    b.title, b.start_min, b.end_min = title, s, e
+    if "color" in d:
+        b.color = int(d["color"]) % 5
+    b.save()
+    return JsonResponse(ser_block(b))
 
 
 @api(("PUT",))
@@ -352,43 +424,6 @@ def ser_payment(p):
             "created": p.created.isoformat(), "admin_note": p.admin_note}
 
 
-@api(("GET",))
-def billing(request):
-    b = settings.BILLING
-    return JsonResponse({
-        "card": {"number": b["card_number"], "holder": b["card_holder"], "bank": b["bank"]},
-        "plans": [{"id": k, "title": v["title"], "price": v["price"], "days": v["days"]} for k, v in b["plans"].items()],
-        "payments": [ser_payment(p) for p in Payment.objects.filter(user=request.api_user)[:10]],
-        "limits": settings.FREE_LIMITS,
-    })
-
-
-@api(("POST",))
-def payment_create(request):
-    u, d = request.api_user, request.data
-    plan = settings.BILLING["plans"].get(str(d.get("plan", "")))
-    f = request.FILES.get("receipt")
-    if not plan:
-        return fail("bad_plan", "پلن نامعتبر است.")
-    if not f:
-        return fail("no_receipt", "عکس رسید را انتخاب کنید.")
-    if f.size > 5 * 1024 * 1024:
-        return fail("too_big", "حجم عکس باید کمتر از ۵ مگابایت باشد.")
-    head = f.read(16)
-    f.seek(0)
-    ext = _sniff(head)
-    if not ext:
-        return fail("bad_image", "فقط عکس JPG، PNG یا WEBP قابل قبول است.")
-    if Payment.objects.filter(user=u, status="pending").exists():
-        return fail("pending_exists", "یک رسید در انتظار بررسی دارید؛ لطفاً تا تأیید آن صبر کنید.", 409)
-    if throttled(f"pay:{u.id}", 5, 86400):
-        return fail("throttled", "تعداد ارسال امروز زیاد بود.", 429)
-    f.name = f"receipt.{ext}"
-    p = Payment.objects.create(user=u, plan_key=str(d.get("plan")), amount=plan["price"], receipt=f,
-                               note=str(d.get("note", ""))[:300])
-    return JsonResponse(ser_payment(p), status=201)
-
-
 @staff_member_required
 def receipt_file(request, pk):
     """رسید فقط برای ادمین (کاربر staff واردشده) قابل مشاهده است."""
@@ -417,7 +452,9 @@ def support_messages(request):
             return fail("bad_value")
         if throttled(f"chat:{u.id}", 20, 600):
             return fail("throttled", "پیام‌ها زیاد بود؛ کمی بعد دوباره بفرستید.", 429)
-        return JsonResponse(ser_msg(SupportMessage.objects.create(user=u, text=text)), status=201)
+        m = SupportMessage.objects.create(user=u, text=text)
+        notify(f"💬 پیام جدید پشتیبانی از {u.username}:\n{text[:300]}\n{settings.NOTIFY['admin_url']}core/supportthread/{u.id}/change/", key=f"chat:{u.id}", cooldown=120)
+        return JsonResponse(ser_msg(m), status=201)
     try:
         after = int(request.GET.get("after", 0))
     except ValueError:

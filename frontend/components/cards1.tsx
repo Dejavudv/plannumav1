@@ -14,6 +14,8 @@ type P = { pl: Planner; me: Me };
 export function TodoCard({ pl, me }: P) {
   const run = useRun();
   const [txt, setTxt] = useState("");
+  const [editId, setEditId] = useState<number | null>(null);
+  const [ev, setEv] = useState("");
   const k = pl.sel, L = pl.day(k).todos, n = L.filter((t) => t.done).length, p = L.length ? (n / L.length) * 100 : 0;
   const lim = me.limits?.todos_per_day, full = !!lim && L.length >= lim;
   const add = () => {
@@ -41,13 +43,30 @@ export function TodoCard({ pl, me }: P) {
         </div>
       )}
       <ul className="list">
-        {L.map((t) => (
+        {L.map((t) => editId === t.id ? (
+          <li key={t.id} className="ed">
+            <input className="inp" value={ev} maxLength={200} autoFocus aria-label="ویرایش کار" onChange={(e) => setEv(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setEditId(null);
+                if (e.key === "Enter" && !e.nativeEvent.isComposing && ev.trim()) run(async () => { await pl.editTodo(k, t.id, ev.trim()); setEditId(null); });
+              }} />
+            <label className="mv">انتقال به روز دیگر
+              <input className="inp" type="date" onChange={(e) => { if (e.target.value) run(async () => { await pl.moveTodo(k, t.id, e.target.value); setEditId(null); }); }} />
+            </label>
+            <button className="btn" onClick={() => ev.trim() && run(async () => { await pl.editTodo(k, t.id, ev.trim()); setEditId(null); })}>ذخیره</button>
+            <button className="x" aria-label="لغو" onClick={() => setEditId(null)}>×</button>
+          </li>
+        ) : (
           <li key={t.id} className={t.done ? "done" : ""}>
             <label>
               <input type="checkbox" checked={t.done} onChange={(e) => run(() => pl.toggleTodo(k, t.id, e.target.checked))} />
               <span className="ck" /><span className="tx">{t.title}</span>
             </label>
-            <button className="x" aria-label="حذف" onClick={() => run(() => pl.delTodo(k, t.id))}>×</button>
+            <span className="acts2">
+              <button className="x" aria-label="ویرایش" title="ویرایش یا انتقال به روز دیگر" onClick={() => { setEditId(t.id); setEv(t.title); }}>✎</button>
+              <button className="x" title="انتقال به فردا" onClick={() => run(() => pl.moveTodo(k, t.id, shift(k, 1)))}>فردا</button>
+              <button className="x" aria-label="حذف" onClick={() => run(() => pl.delTodo(k, t.id))}>×</button>
+            </span>
           </li>
         ))}
         {!L.length && <li className="empty">هنوز موردی اضافه نشده است.</li>}
@@ -63,7 +82,7 @@ export function TodoCard({ pl, me }: P) {
 /* ------------------------------ هبیت ترکر ------------------------------ */
 const PRESETS = ["ورزش", "مطالعه", "مدیتیشن", "نوشیدن آب", "پیاده‌روی", "خواب زود"];
 
-export function HabitCard({ pl, me }: P) {
+export function HabitCard({ pl, me, onPacks }: P & { onPacks: () => void }) {
   const run = useRun();
   const [man, setMan] = useState(false);
   const [delId, setDelId] = useState<number | null>(null);
@@ -96,6 +115,11 @@ export function HabitCard({ pl, me }: P) {
                   <input className="inp" defaultValue={h.name} key={h.name} aria-label="نام عادت" maxLength={100}
                     onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== h.name) run(() => pl.patchHabit(h.id, { name: v })); }} />
                 </div>
+                <label className="rem">یادآوری
+                  <input className="inp" type="time" value={h.reminder || ""} aria-label="ساعت یادآوری"
+                    onChange={(e) => run(() => pl.patchHabit(h.id, { reminder: e.target.value }))} />
+                  {h.reminder && <button className="x" aria-label="حذف یادآوری" onClick={() => run(() => pl.patchHabit(h.id, { reminder: "" }))}>×</button>}
+                </label>
                 <div className="chips" style={{ margin: 0 }} role="group" aria-label="روزهای تکرار">
                   {WDN.map((d, j) => (
                     <button key={j} className="chip" aria-pressed={h.weekdays.includes(j)}
@@ -155,7 +179,10 @@ export function HabitCard({ pl, me }: P) {
             </select>
             <button type="button" className="btn" onClick={submit}>افزودن</button>
           </div>
-          {pre.length > 0 && <div className="chips">{pre.map((n) => <button key={n} className="chip" onClick={() => add(n, [0, 1, 2, 3, 4, 5, 6])}>+ {n}</button>)}</div>}
+          <div className="chips">
+            {pre.slice(0, 5).map((n) => <button key={n} className="chip" onClick={() => add(n, [0, 1, 2, 3, 4, 5, 6])}>+ {n}</button>)}
+            <button className="chip" onClick={onPacks}>📦 قالب‌های آماده</button>
+          </div>
         </>
       )}
       {habits.length > 0 && <div className="acts"><button className="link" onClick={() => { setMan(!man); setDelId(null); }}>{man ? "پایان ویرایش" : "ویرایش، ترتیب و حذف عادت‌ها"}</button></div>}

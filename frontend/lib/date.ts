@@ -7,7 +7,12 @@ export const pad = (n: number) => String(n).padStart(2, "0");
 export const key = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 export const fromKey = (k: string) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d, 12); };
 export const shift = (k: string, n: number) => { const d = fromKey(k); d.setDate(d.getDate() + n); return key(d); };
-export const todayKey = () => key(new Date());
+/** منطقهٔ زمانی «امروز»؛ با TIME_ZONE سرور (Asia/Tehran) هماهنگ است و با NEXT_PUBLIC_TZ قابل تغییر است. */
+export const TZ = process.env.NEXT_PUBLIC_TZ || "Asia/Tehran";
+const TF = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+const HF = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+export const todayKey = () => TF.format(new Date());
+export const nowMinutes = () => { const [h, m] = HF.format(new Date()).split(":").map(Number); return h * 60 + m; };
 /** شماره روز هفته: شنبه = ۰ ... جمعه = ۶ */
 export const di = (k: string) => (fromKey(k).getDay() + 1) % 7;
 export const wstart = (k: string) => shift(k, -di(k));

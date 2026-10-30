@@ -1,11 +1,15 @@
 from django.urls import path
 
 from . import views as v
+from . import views2 as w
 
 urlpatterns = [
+    path("plans", w.plans),
     path("auth/register", v.register),
     path("auth/login", v.login),
     path("auth/logout", v.logout),
+    path("auth/password", w.change_password),
+    path("auth/delete", w.delete_account),
     path("me", v.me),
     path("settings", v.update_settings),
     path("days", v.days),
@@ -19,7 +23,18 @@ urlpatterns = [
     path("blocks/<int:pk>", v.block_item),
     path("day/<str:day>", v.day_entry),
     path("copy-week", v.copy_week),
-    path("billing", v.billing),
-    path("billing/payments", v.payment_create),
+    path("recurring", w.recurring),
+    path("recurring/<int:pk>", w.recurring_item),
+    path("backup", w.backup),
+    path("restore", w.restore),
+    path("billing", w.billing),
+    path("billing/coupon", w.coupon_check),
+    path("billing/requests", w.billing_request),
+    path("billing/requests/<int:pk>", w.billing_request_item),
+    path("billing/requests/<int:pk>/receipt", w.billing_request_item),
+    path("push/subscribe", w.push_subscribe),
+    path("push/unsubscribe", w.push_unsubscribe),
+    path("push/test", w.push_test),
     path("support/messages", v.support_messages),
+    path("consult", w.consult),
 ]

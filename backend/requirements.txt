@@ -1,4 +1,8 @@
 Django>=5.0,<5.3
 gunicorn>=22.0
 whitenoise>=6.6
-# اختیاری برای PostgreSQL: psycopg[binary]>=3.1
+pywebpush>=2.0            # اعلان‌های وب (یادآوری عادت‌ها)
+# اختیاری:
+# redis>=5.0              # با REDIS_URL برای کش مشترک
+# sentry-sdk>=2.0         # با SENTRY_DSN برای پایش خطا
+# psycopg[binary]>=3.1    # برای PostgreSQL

@@ -4,7 +4,7 @@ import type { Block, Me } from "@/lib/types";
 import type { Planner } from "@/lib/usePlanner";
 import { api } from "@/lib/api";
 import { useRun } from "@/lib/toast";
-import { dur, fd, fmt, fn, pad, tmin, todayKey } from "@/lib/date";
+import { dur, fd, fmt, fn, nowMinutes, pad, tmin, todayKey } from "@/lib/date";
 import { sleepMinutes } from "@/lib/stats";
 
 const COL = ["--c0", "--c1", "--c2", "--c3", "--c4"];
@@ -29,7 +29,7 @@ function layout(bs: Block[]): LB[] {
 }
 
 /* ------------------------------ تایم‌باکس ------------------------------ */
-export function TimeCard({ pl }: { pl: Planner }) {
+export function TimeCard({ pl, onEdit }: { pl: Planner; onEdit: (b: Block) => void }) {
   const run = useRun();
   const [t, setT] = useState(""), [s, setS] = useState("09:00"), [e, setE] = useState("10:00"), [c, setC] = useState(0);
   const sc = useRef<HTMLDivElement>(null);
@@ -38,7 +38,6 @@ export function TimeCard({ pl }: { pl: Planner }) {
   bs.forEach((b) => { for (let i = b.start; i < b.end; i++) used[i] = 1; });
   const u = used.reduce((a: number, b: number) => a + b, 0);
   const isToday = k === todayKey();
-  const now = new Date();
 
   useEffect(() => { if (sc.current) sc.current.scrollTop = 6.5 * HH; }, [k]);
 
@@ -77,15 +76,16 @@ export function TimeCard({ pl }: { pl: Planner }) {
             </div>
           ))}
           {layout(bs).map((b) => (
-            <div className="blk" key={b.id} style={{
+            <div className="blk" key={b.id} role="button" tabIndex={0} title="برای ویرایش کلیک کنید" onClick={() => onEdit(b)}
+              onKeyDown={(ev) => { if (ev.key === "Enter") onEdit(b); }} style={{
               "--k": `var(${COL[b.color % 5]})`, top: (b.start / 60) * HH, height: Math.max(((b.end - b.start) / 60) * HH - 2, 18),
               insetInlineStart: `calc(54px + (100% - 60px)*${b.l / b.n})`, width: `calc((100% - 60px)/${b.n} - 3px)`,
             } as React.CSSProperties}>
               <div><b>{b.title}</b>{b.end - b.start >= 40 && <em>{fmt(b.start)} تا {fmt(b.end)}</em>}</div>
-              <button aria-label="حذف بلوک" onClick={() => run(() => pl.delBlock(k, b.id))}>×</button>
+              <button aria-label="حذف بلوک" onClick={(ev) => { ev.stopPropagation(); run(() => pl.delBlock(k, b.id)); }}>×</button>
             </div>
           ))}
-          {isToday && <div className="now" style={{ top: ((now.getHours() * 60 + now.getMinutes()) / 60) * HH }} />}
+          {isToday && <div className="now" style={{ top: (nowMinutes() / 60) * HH }} />}
         </div>
       </div>
     </section>
